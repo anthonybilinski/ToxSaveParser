@@ -107,7 +107,7 @@ QJsonArray getDht(uint8_t*& data)
     return getDhtSection(data);
 }
 
-QJsonObject getConferencesPeer(uint8_t*& data)
+QJsonObject getConferencePeer(uint8_t*& data)
 {
     QJsonObject node;
     node.insert("Long term public key", readHexData(data, 32).c_str());
@@ -124,6 +124,34 @@ QJsonObject getConferencesPeer(uint8_t*& data)
     data++;
 
     node.insert("Name", readString(data, nickLen).c_str());
+    return node;
+}
+
+QJsonObject getConference(uint8_t*& data)
+{
+    QJsonObject node;
+    node.insert("Groupchat type", data[0]);
+    data += 1;
+    node.insert("Groupchat id", readHexData(data, 32).c_str());
+    node.insert("Message number", static_cast<int>(dataToNumber<uint32_t>(data)));
+    node.insert("Lossy message number", dataToNumber<uint16_t>(data));
+    node.insert("Peer number", dataToNumber<uint16_t>(data));\
+
+    auto numPeers = dataToNumber<int>(data);
+    node.insert("Number of peers", static_cast<int>(numPeers));
+
+    int titleLen = data[0];
+    node.insert("Title length", titleLen);
+    data += 1;
+
+    node.insert("Title", readString(data, titleLen).c_str());
+
+    QJsonArray peers;
+    for (int i = 0; i < numPeers; ++i) {
+        peers.append(getConferencePeer(data));
+    }
+    node.insert("List of peers", peers);
+
     return node;
 }
 
@@ -190,35 +218,15 @@ QJsonArray getFriends(uint8_t*& data, int sectionSize)
     return friends;
 }
 
-QJsonObject getConferences(uint8_t*& data)
+QJsonArray getConferences(uint8_t*& data, int sectionSize)
 {
-    QJsonObject node;
-    node.insert("Groupchat type", data[0]);
-    data += 1;
-
-    node.insert("Groupchat id", readHexData(data, 32).c_str());
-
-    node.insert("Message number", static_cast<int>(dataToNumber<uint32_t>(data)));
-
-    node.insert("Lossy message number", dataToNumber<uint16_t>(data));
-
-    node.insert("Peer number", dataToNumber<uint16_t>(data));
-
-    auto numPeers = dataToNumber<int>(data);
-    node.insert("Number of peers", static_cast<int>(numPeers));
-
-    int titleLen = data[0];
-    node.insert("Title length", titleLen);
-    data += 1;
-
-    node.insert("Title", readString(data, titleLen).c_str());
-
-    QJsonArray peers;
-    for (int i = 0; i < numPeers; ++i) {
-        peers.append(getConferencesPeer(data));
+    const uint8_t* startPos = data;
+    QJsonArray groups;
+    while (data - startPos < sectionSize)
+    {
+        groups.append(getConference(data));
     }
-    node.insert("List of peers", peers);
-    return node;
+    return groups;
 }
 
 void parseGlobalHeader(uint8_t*& data)
@@ -315,7 +323,7 @@ parsedSection convertSectionToJson(SectionHeader sectionHeader)
         ret.json = getNodeInfos(sectionHeader.data, sectionHeader.size);
         break;
     case SectionType::conferences:
-        ret.json = getConferences(sectionHeader.data);
+        ret.json = getConferences(sectionHeader.data, sectionHeader.size);
         break;
     default :
         // unknown section
