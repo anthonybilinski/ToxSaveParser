@@ -11,8 +11,8 @@ make
 firefox profile.json
 ```
 
-![sample-output](https://user-images.githubusercontent.com/10469203/81649240-dc88c980-93e4-11ea-8eb4-bc831f98d6ef.png)
+![sample-output](https://user-images.githubusercontent.com/10469203/82112352-000f8500-9701-11ea-8782-12327b573a08.png)
 
 **Notes**
 
-- Currently only supports litte-endian Linux
+- Currently only supports little-endian Linux
